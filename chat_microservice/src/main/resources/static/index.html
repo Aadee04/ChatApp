@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0">
+  <title>Spring Boot WebSocket Chat Application</title>
+  <link rel="stylesheet" href="css/main.css" />
+</head>
+<body>
+<noscript>
+  <h2>Sorry! Your browser doesn't support Javascript</h2>
+</noscript>
+
+<div id="username-page">
+  <div class="username-page-container">
+    <h1 class="title">Type your username to enter the Chatroom</h1>
+    <form id="usernameForm" name="usernameForm">
+      <div class="form-group">
+        <input type="text" id="name" placeholder="Username" autocomplete="off" class="form-control" />
+      </div>
+      <div class="form-group">
+        <button type="submit" class="accent username-submit">Start Chatting</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div id="chat-page" class="hidden">
+  <div class="chat-container">
+    <div class="chat-header">
+      <h2>Spring WebSocket Chat Demo</h2>
+    </div>
+    <div class="connecting">
+      Connecting...
+    </div>
+    <ul id="messageArea"></ul>
+    <form id="messageForm" name="messageForm">
+      <div class="form-group">
+        <div class="input-group clearfix">
+          <input type="text" id="message" placeholder="Type a message..." autocomplete="off" class="form-control"/>
+          <button type="submit" class="primary">Send</button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.1.4/sockjs.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
+
+<script>
+  let stompClient = null;
+  let username = null;
+  const usernamePage = document.querySelector("#username-page");
+  const chatPage = document.querySelector("#chat-page");
+  const messageInput = document.querySelector("#message");
+  const messageArea = document.querySelector("#messageArea");
+  const connectingElement = document.querySelector(".connecting");
+
+  document.querySelector("#usernameForm").addEventListener("submit", connect);
+  document.querySelector("#messageForm").addEventListener("submit", sendMessage);
+
+  function connect(event) {
+    username = document.querySelector('#name').value.trim();
+
+    if (username) {
+        usernamePage.classList.add('hidden');
+        chatPage.classList.remove('hidden');
+
+        var socket = new SockJS('/ws');//websocket connection
+        stompClient = Stomp.over(socket);
+
+        stompClient.connect({}, function () {
+            // Subscribe to the public chatroom
+            stompClient.subscribe('/topic/public', onMessageReceived);
+
+            // Subscribe to a private topic to receive past messages
+            stompClient.subscribe('/topic/' + username, onPreviousMessagesReceived);
+
+            // Send join message to server
+            stompClient.send("/app/addUser",
+                {},
+                JSON.stringify({ sender: username, type: 'JOIN' })
+            );
+
+            connectingElement.classList.add('hidden');
+        }, onError);
+    }
+    event.preventDefault();
+  }
+
+  function sendMessage(event) {
+    var messageContent = messageInput.value.trim();
+
+    if (messageContent && stompClient) {
+        var chatMessage = {
+            sender: username,
+            content: messageContent,
+            type: 'CHAT'
+        };
+
+        stompClient.send("/app/sendMessage", {}, JSON.stringify(chatMessage));
+        messageInput.value = ''; // Clear input after sending
+    }
+
+    event.preventDefault();
+  }
+
+  function onMessageReceived(payload) {
+    let message = JSON.parse(payload.body);
+    displayMessage(message);
+  }
+
+  function onPreviousMessagesReceived(payload) {
+    let messages = JSON.parse(payload.body);
+    messages.forEach(message => {
+        displayMessage(message);
+    });
+  }
+
+  function displayMessage(message) {
+    var messageElement = document.createElement('li');
+
+    if (message.type === 'LEAVE') {
+        messageElement.textContent = message.sender + " has left the chat.";
+    } else if (message.type === 'JOIN') {
+        messageElement.textContent = message.sender + " has joined the chat.";
+    } else {
+        messageElement.textContent = message.sender + ": " + message.content;
+    }
+
+    document.querySelector("#messageArea").appendChild(messageElement);
+}
+
+
+  function onError(error) {
+    console.error("WebSocket Error: " + error);
+    connectingElement.textContent = "Could not connect to WebSocket server. Please refresh.";
+    connectingElement.style.color = 'red';
+  }
+</script>
+
+</body>
+</html>

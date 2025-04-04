@@ -19,6 +19,7 @@
           <entry name="$MAVEN_REPOSITORY$/org/projectlombok/lombok/unknown/lombok-unknown.jar" />
         </processorPath>
         <module name="chat" />
+        <module name="chatapp_v2" />
       </profile>
     </annotationProcessing>
   </component>
@@ -26,6 +27,7 @@
     <option name="ADDITIONAL_OPTIONS_OVERRIDE">
       <module name="api-gateway" options="-parameters" />
       <module name="chat" options="-parameters" />
+      <module name="chatapp_v2" options="-parameters" />
       <module name="eureka-server" options="-parameters" />
       <module name="spring-boot-security-jwt" options="-parameters" />
     </option>
