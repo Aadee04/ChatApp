@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0">
+  <title>Group Chat</title>
+  <link rel="stylesheet" href="css/main.css" />
+</head>
+<body>
+
+<!-- Group Selection Page -->
+<div id="group-selection">
+  <h2>Select an Option</h2>
+  <button onclick="showCreateGroup()">Create Group</button>
+  <button onclick="showJoinGroup()">Join Group</button>
+</div>
+
+<!-- Create Group Page -->
+<div id="create-group" class="hidden">
+  <h2>Create a Group</h2>
+  <input type="text" id="groupName" placeholder="Enter group name">
+  <button onclick="createGroup()">Create</button>
+  <p>Group ID: <span id="groupIdDisplay"></span></p>
+</div>
+
+<!-- Join Group Page -->
+<div id="join-group" class="hidden">
+  <h2>Join a Group</h2>
+  <input type="text" id="userName" placeholder="Enter your name">
+  <input type="text" id="groupId" placeholder="Enter Group ID">
+  <button onclick="joinGroup()">Join</button>
+</div>
+
+<!-- Chat Page -->
+<div id="chat-page" class="hidden">
+  <div class="chat-container">
+    <h2>Group Chat</h2>
+    <ul id="messageArea"></ul>
+    <input type="text" id="message" placeholder="Type a message...">
+    <button onclick="sendMessage()">Send</button>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.1.4/sockjs.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
+
+<script>
+  let stompClient = null;
+  let groupId = null;
+  let userName = null;
+
+  function showCreateGroup() {
+      document.getElementById("group-selection").classList.add("hidden");
+      document.getElementById("create-group").classList.remove("hidden");
+  }
+
+  function showJoinGroup() {
+      document.getElementById("group-selection").classList.add("hidden");
+      document.getElementById("join-group").classList.remove("hidden");
+  }
+
+  function createGroup() {
+      let name = document.getElementById("groupName").value;
+      fetch("http://localhost:8080/api/groups/create?name=" + name, { method: "POST" })
+          .then(response => response.json())
+          .then(data => {
+              groupId = data.id;
+              document.getElementById("groupIdDisplay").textContent = groupId;
+          })
+          .catch(error => console.error("Error creating group:", error));
+  }
+
+  function joinGroup() {
+      userName = document.getElementById("userName").value;
+      groupId = document.getElementById("groupId").value;
+      if (!userName || !groupId) {
+          alert("Please enter both name and group ID");
+          return;
+      }
+      connect();
+  }
+
+  function connect() {
+    let socket = new SockJS('http://localhost:8080/ws');
+    stompClient = Stomp.over(socket);
+    stompClient.connect({}, function () {
+        document.getElementById("join-group").classList.add("hidden");
+        document.getElementById("chat-page").classList.remove("hidden");
+
+        // Fetch previous messages
+        fetch("http://localhost:8080/api/groups/" + groupId + "/messages")
+            .then(response => response.json())
+            .then(messages => {
+                messages.forEach(message => displayMessage(message)); // Display old messages
+            });
+
+        // Subscribe to new messages in real-time
+        stompClient.subscribe('/topic/group/' + groupId, function (message) {
+            let msg = JSON.parse(message.body);
+            displayMessage(msg);
+        });
+    });
+}
+
+
+  function sendMessage() {
+      let messageContent = document.getElementById("message").value;
+      let chatMessage = {
+          group: { id: groupId },
+          sender: userName,
+          content: messageContent,
+          type: "CHAT"
+      };
+      stompClient.send("/app/sendMessageToGroup", {}, JSON.stringify(chatMessage));
+  }
+
+  function displayMessage(message) {
+    let messageElement = document.createElement('li');
+    messageElement.textContent = message.sender + ": " + message.content;
+    document.getElementById("messageArea").appendChild(messageElement);
+}
+
+</script>
+
+</body>
+</html>

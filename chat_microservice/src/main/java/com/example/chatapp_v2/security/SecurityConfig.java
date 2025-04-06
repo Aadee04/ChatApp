@@ -20,9 +20,12 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http, JwtAuthFilter jwtAuthFilter) throws Exception {
-        http.csrf().disable()
+        http
+                .cors()
+                .and()
+                .csrf().disable()
                 .authorizeHttpRequests(auth -> auth
-                        .anyRequest().permitAll()  // Enforce JWT authentication on all endpoints
+                        .anyRequest().permitAll()  // Enforce JWT authentication on no endpoints
                 )
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 

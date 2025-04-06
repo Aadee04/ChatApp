@@ -1,15 +1,14 @@
 package com.example.chatapp_v2.entity;
 
 import jakarta.persistence.*;
-import java.util.UUID;
 
 @Entity
 @Table(name = "chat_messages")
 public class ChatMessage {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID) // Auto-generates unique UUIDs
-    private UUID id;
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
 
     @Enumerated(EnumType.STRING)
     private MessageType type;
@@ -17,19 +16,24 @@ public class ChatMessage {
     private String content;
     private String sender;
 
+    @ManyToOne
+    @JoinColumn(name = "group_id", nullable = true) // Nullable because it can be a private message
+    private Group group; // Link to Group entity
+
     // Private constructor for builder
     private ChatMessage(ChatMessageBuilder builder) {
         this.id = builder.id;
         this.type = builder.type;
         this.content = builder.content;
         this.sender = builder.sender;
+        this.group = builder.group;
     }
 
     // No-arg constructor for JPA
     public ChatMessage() {}
 
     // Getters
-    public UUID getId() {
+    public Long getId() {
         return id;
     }
 
@@ -45,6 +49,10 @@ public class ChatMessage {
         return sender;
     }
 
+    public Group getGroup() {
+        return group;
+    }
+
     public void setType(MessageType type) {
         this.type = type;
     }
@@ -57,16 +65,21 @@ public class ChatMessage {
         this.sender = sender;
     }
 
+    public void setGroup(Group group) {
+        this.group = group;
+    }
+
     // Static inner Builder class
     public static class ChatMessageBuilder {
-        private UUID id;
+        private Long id;
         private MessageType type;
         private String content;
         private String sender;
+        private Group group;
 
         public ChatMessageBuilder() {}
 
-        public ChatMessageBuilder id(UUID id) {
+        public ChatMessageBuilder id(Long id) {
             this.id = id;
             return this;
         }
@@ -83,6 +96,11 @@ public class ChatMessage {
 
         public ChatMessageBuilder sender(String sender) {
             this.sender = sender;
+            return this;
+        }
+
+        public ChatMessageBuilder group(Group group) {
+            this.group = group;
             return this;
         }
 

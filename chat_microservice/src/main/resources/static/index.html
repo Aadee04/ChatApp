@@ -2,140 +2,145 @@
 <html>
 <head>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0">
-  <title>Spring Boot WebSocket Chat Application</title>
-  <link rel="stylesheet" href="css/main.css" />
+  <title>Group Chat</title>
+  <link rel="stylesheet" href="/css/main.css" />
 </head>
 <body>
-<noscript>
-  <h2>Sorry! Your browser doesn't support Javascript</h2>
-</noscript>
 
-<div id="username-page">
-  <div class="username-page-container">
-    <h1 class="title">Type your username to enter the Chatroom</h1>
-    <form id="usernameForm" name="usernameForm">
-      <div class="form-group">
-        <input type="text" id="name" placeholder="Username" autocomplete="off" class="form-control" />
-      </div>
-      <div class="form-group">
-        <button type="submit" class="accent username-submit">Start Chatting</button>
-      </div>
-    </form>
-  </div>
+<!-- Group Selection Page -->
+<div id="group-selection">
+  <h2>Select an Option</h2>
+  <button onclick="showCreateGroup()">Create Group</button>
+  <button onclick="showJoinGroup()">Join Group</button>
 </div>
 
+<!-- Create Group Page -->
+<div id="create-group" class="hidden">
+  <h2>Create a Group</h2>
+  <input type="text" id="groupName" placeholder="Enter group name">
+  <button onclick="createGroup()">Create</button>
+  <p>Group ID: <span id="groupIdDisplay"></span></p>
+</div>
+
+<!-- Join Group Page -->
+<div id="join-group" class="hidden">
+  <h2>Join a Group</h2>
+  <input type="text" id="userName" placeholder="Enter your name">
+  <input type="text" id="groupId" placeholder="Enter Group ID">
+  <button onclick="joinGroup()">Join</button>
+</div>
+
+<!-- Chat Page -->
 <div id="chat-page" class="hidden">
   <div class="chat-container">
-    <div class="chat-header">
-      <h2>Spring WebSocket Chat Demo</h2>
-    </div>
-    <div class="connecting">
-      Connecting...
-    </div>
+    <h2>Group Chat</h2>
     <ul id="messageArea"></ul>
-    <form id="messageForm" name="messageForm">
-      <div class="form-group">
-        <div class="input-group clearfix">
-          <input type="text" id="message" placeholder="Type a message..." autocomplete="off" class="form-control"/>
-          <button type="submit" class="primary">Send</button>
-        </div>
-      </div>
-    </form>
+    <input type="text" id="message" placeholder="Type a message...">
+    <button onclick="sendMessage()">Send</button>
   </div>
 </div>
 
+<!-- Libs -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.1.4/sockjs.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
 
+<!-- Firebase -->
+<script type="module" src="/firebase-messaging.js"></script>
+<script type="module" src="/firebase-messaging-sw.js"></script>
+
+
 <script>
   let stompClient = null;
-  let username = null;
-  const usernamePage = document.querySelector("#username-page");
-  const chatPage = document.querySelector("#chat-page");
-  const messageInput = document.querySelector("#message");
-  const messageArea = document.querySelector("#messageArea");
-  const connectingElement = document.querySelector(".connecting");
+  let groupId = null;
+  let userName = null;
+  let port = 9090;
 
-  document.querySelector("#usernameForm").addEventListener("submit", connect);
-  document.querySelector("#messageForm").addEventListener("submit", sendMessage);
-
-  function connect(event) {
-    username = document.querySelector('#name').value.trim();
-
-    if (username) {
-        usernamePage.classList.add('hidden');
-        chatPage.classList.remove('hidden');
-
-        var socket = new SockJS('/ws');//websocket connection
-        stompClient = Stomp.over(socket);
-
-        stompClient.connect({}, function () {
-            // Subscribe to the public chatroom
-            stompClient.subscribe('/topic/public', onMessageReceived);
-
-            // Subscribe to a private topic to receive past messages
-            stompClient.subscribe('/topic/' + username, onPreviousMessagesReceived);
-
-            // Send join message to server
-            stompClient.send("/app/addUser",
-                {},
-                JSON.stringify({ sender: username, type: 'JOIN' })
-            );
-
-            connectingElement.classList.add('hidden');
-        }, onError);
-    }
-    event.preventDefault();
+  function showCreateGroup() {
+    document.getElementById("group-selection").classList.add("hidden");
+    document.getElementById("create-group").classList.remove("hidden");
   }
 
-  function sendMessage(event) {
-    var messageContent = messageInput.value.trim();
+  function showJoinGroup() {
+    document.getElementById("group-selection").classList.add("hidden");
+    document.getElementById("join-group").classList.remove("hidden");
+  }
 
-    if (messageContent && stompClient) {
-        var chatMessage = {
-            sender: username,
-            content: messageContent,
-            type: 'CHAT'
-        };
+  function createGroup() {
+    let name = document.getElementById("groupName").value;
+    fetch("http://localhost:" + port + "/chat/groups/create?name=" + name, { method: "POST" })
+            .then(response => response.json())
+            .then(data => {
+              groupId = data.id;
+              document.getElementById("groupIdDisplay").textContent = groupId;
+            })
+            .catch(error => console.error("Error creating group:", error));
+  }
 
-        stompClient.send("/app/sendMessage", {}, JSON.stringify(chatMessage));
-        messageInput.value = ''; // Clear input after sending
+  function joinGroup() {
+    userName = document.getElementById("userName").value;
+    groupId = document.getElementById("groupId").value;
+    if (!userName || !groupId) {
+      alert("Please enter both name and group ID");
+      return;
     }
 
-    event.preventDefault();
+    // 💥 CALL JOIN GROUP ENDPOINT
+    fetch('http://localhost:' + port + '/chat/groups/join?groupId=${groupId}&userId=${userName}', {
+      method: "POST"
+    })
+            .then(response => response.text())
+            .then(msg => {
+              console.log(msg);
+              // Only connect to chat once join is confirmed
+              connect();
+
+              // Register FCM Token
+              requestNotificationPermission(userName);
+            })
+            .catch(error => {
+              console.error("Failed to join group:", error);
+              alert("Failed to join group.");
+            });
   }
 
-  function onMessageReceived(payload) {
-    let message = JSON.parse(payload.body);
-    displayMessage(message);
-  }
 
-  function onPreviousMessagesReceived(payload) {
-    let messages = JSON.parse(payload.body);
-    messages.forEach(message => {
-        displayMessage(message);
+  function connect() {
+    let socket = new SockJS('http://localhost:' + port + '/ws');
+    stompClient = Stomp.over(socket);
+    stompClient.connect({}, function () {
+      document.getElementById("join-group").classList.add("hidden");
+      document.getElementById("chat-page").classList.remove("hidden");
+
+      // Get old messages
+      fetch("http://localhost:" + port + "/chat/groups/" + groupId + "/messages")
+              .then(response => response.json())
+              .then(messages => {
+                messages.forEach(message => displayMessage(message));
+              });
+
+      // Subscribe to real-time group chat
+      stompClient.subscribe('/topic/group/' + groupId, function (message) {
+        let msg = JSON.parse(message.body);
+        displayMessage(msg);
+      });
     });
   }
 
+  function sendMessage() {
+    let messageContent = document.getElementById("message").value;
+    let chatMessage = {
+      group: { id: groupId },
+      sender: userName,
+      content: messageContent,
+      type: "CHAT"
+    };
+    stompClient.send("/app/sendMessageToGroup", {}, JSON.stringify(chatMessage));
+  }
+
   function displayMessage(message) {
-    var messageElement = document.createElement('li');
-
-    if (message.type === 'LEAVE') {
-        messageElement.textContent = message.sender + " has left the chat.";
-    } else if (message.type === 'JOIN') {
-        messageElement.textContent = message.sender + " has joined the chat.";
-    } else {
-        messageElement.textContent = message.sender + ": " + message.content;
-    }
-
-    document.querySelector("#messageArea").appendChild(messageElement);
-}
-
-
-  function onError(error) {
-    console.error("WebSocket Error: " + error);
-    connectingElement.textContent = "Could not connect to WebSocket server. Please refresh.";
-    connectingElement.style.color = 'red';
+    let messageElement = document.createElement('li');
+    messageElement.textContent = message.sender + ": " + message.content;
+    document.getElementById("messageArea").appendChild(messageElement);
   }
 </script>
 

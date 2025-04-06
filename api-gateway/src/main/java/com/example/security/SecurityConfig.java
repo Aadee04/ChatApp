@@ -20,7 +20,10 @@ public class SecurityConfig {
 
     @Bean
     public SecurityWebFilterChain securityWebFilterChain(ServerHttpSecurity http) {
-        http.csrf(ServerHttpSecurity.CsrfSpec::disable) // Disable CSRF for stateless APIs
+        http
+                .cors()
+                .and()
+                .csrf(ServerHttpSecurity.CsrfSpec::disable) // Disable CSRF for stateless APIs
                 .authorizeExchange(exchange -> exchange
                         .pathMatchers("/api/auth/**").permitAll() // Allow authentication requests without JWT
                         .pathMatchers("/api/test/**").permitAll() // Allow other public endpoints
