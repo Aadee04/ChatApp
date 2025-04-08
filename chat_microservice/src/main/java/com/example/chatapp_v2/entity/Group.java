@@ -1,5 +1,6 @@
 package com.example.chatapp_v2.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import java.util.HashSet;
 import java.util.Set;
@@ -16,6 +17,7 @@ public class Group {
     private String name;
 
 
+    @JsonIgnore
     @OneToMany(mappedBy = "group", cascade = CascadeType.ALL, orphanRemoval = true)//cascade->if group deleted, users in it deleted, orphanRemoval->can remove ppl from grp
     private Set<GroupMember> members = new HashSet<>();//hashset for unique members
 

@@ -3,7 +3,7 @@
 <head>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0">
   <title>Group Chat</title>
-  <link rel="stylesheet" href="/css/main.css" />
+  <link rel="stylesheet" href="css/main.css" />
 </head>
 <body>
 
@@ -45,8 +45,8 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
 
 <!-- Firebase -->
-<script type="module" src="/firebase-messaging.js"></script>
-<script type="module" src="/firebase-messaging-sw.js"></script>
+<script type="module" src="firebase-messaging.js"></script>
+<script type="module" src="firebase-messaging-sw.js"></script>
 
 
 <script>
@@ -54,7 +54,6 @@
   let groupId = null;
   let userName = null;
   let port = 9090;
-
   function showCreateGroup() {
     document.getElementById("group-selection").classList.add("hidden");
     document.getElementById("create-group").classList.remove("hidden");
@@ -85,7 +84,7 @@
     }
 
     // 💥 CALL JOIN GROUP ENDPOINT
-    fetch('http://localhost:' + port + '/chat/groups/join?groupId=${groupId}&userId=${userName}', {
+    fetch(`http://localhost:${port}/chat/groups/join?groupId=${groupId}&userId=${userName}`, {
       method: "POST"
     })
             .then(response => response.text())
@@ -115,8 +114,15 @@
       fetch("http://localhost:" + port + "/chat/groups/" + groupId + "/messages")
               .then(response => response.json())
               .then(messages => {
+                console.log("Fetched messages:", messages);
+                if (!Array.isArray(messages)) {
+                  messages = [messages];
+                }
+
                 messages.forEach(message => displayMessage(message));
               });
+
+
 
       // Subscribe to real-time group chat
       stompClient.subscribe('/topic/group/' + groupId, function (message) {
@@ -138,10 +144,12 @@
   }
 
   function displayMessage(message) {
+    console.log("Displaying message:", message); // Debug log
     let messageElement = document.createElement('li');
     messageElement.textContent = message.sender + ": " + message.content;
     document.getElementById("messageArea").appendChild(messageElement);
   }
+
 </script>
 
 </body>

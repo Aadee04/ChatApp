@@ -6,6 +6,7 @@ import com.google.firebase.FirebaseOptions;
 import jakarta.annotation.PostConstruct;
 import org.springframework.context.annotation.Configuration;
 
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 
@@ -14,12 +15,8 @@ public class FirebaseConfig {
 
     @PostConstruct
     public void init() throws IOException {
-        InputStream serviceAccount =
-                getClass().getClassLoader().getResourceAsStream("static/json/service-account-file.json");
-
-        if (serviceAccount == null) {
-            throw new IOException("❌ Firebase service account file not found!");
-        }
+        FileInputStream serviceAccount =
+                new FileInputStream("notifs/src/main/resources/json/service-account-file.json");
 
         FirebaseOptions options = FirebaseOptions.builder()
                 .setCredentials(GoogleCredentials.fromStream(serviceAccount))

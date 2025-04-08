@@ -1,5 +1,6 @@
 package com.example.chatapp_v2.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 
 @Entity
@@ -13,6 +14,7 @@ public class GroupMember {
     @ManyToOne//This tells JPA that many GroupMembers can belong to a single Group.
     @MapsId("groupId")//@MapsId links this field (group) to the groupId in the primary key (GroupMemberId).
     @JoinColumn(name = "group_id")//This tells Hibernate to use the group_id column in the database as the foreign key.
+    @JsonIgnore
     private Group group;
 
 

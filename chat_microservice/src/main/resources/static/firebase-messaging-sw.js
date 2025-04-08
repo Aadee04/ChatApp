@@ -23,7 +23,7 @@ messaging.onBackgroundMessage((payload) => {
   const notificationTitle = payload.notification.title;
   const notificationOptions = {
     body: payload.notification.body,
-    icon: "/firebase-logo.png" // Change this if you have a different notification icon
+    icon: "logo/chatapp_logo.png" // Change this if you have a different notification icon
   };
 
   self.registration.showNotification(notificationTitle, notificationOptions);

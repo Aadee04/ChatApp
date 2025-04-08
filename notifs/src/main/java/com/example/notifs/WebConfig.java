@@ -16,7 +16,8 @@ public class WebConfig {
 				registry.addMapping("/chat/notifications/**")
 						.allowedOrigins("http://localhost:8080", "http://localhost:9090")
 						.allowedMethods("GET", "POST", "PUT", "DELETE")
-						.allowedHeaders("*");
+						.allowedHeaders("*")
+						.allowCredentials(true);
 			}
 		};
 	}

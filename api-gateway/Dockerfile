@@ -5,10 +5,10 @@ FROM openjdk:23-jdk-slim
 WORKDIR /app
 
 # Add the jar file to the container
-COPY target/your-service-name.jar app.jar
+COPY target/api-gateway-0.0.1-SNAPSHOT.jar app.jar
 
 # Expose the port (optional but useful for local runs)
-EXPOSE 8080
+EXPOSE 9090
 
 # Command to run the app
 ENTRYPOINT ["java", "-jar", "app.jar"]
