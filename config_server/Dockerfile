@@ -1,6 +1,8 @@
 # Use OpenJDK base image
 FROM openjdk:23-jdk-slim
 
+RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
+
 # Create a directory inside container
 WORKDIR /app
 
