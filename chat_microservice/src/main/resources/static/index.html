@@ -110,27 +110,34 @@
       document.getElementById("join-group").classList.add("hidden");
       document.getElementById("chat-page").classList.remove("hidden");
 
+      // Send "addUserToGroup" to store username in session
+      stompClient.send("/app/addUserToGroup", {}, JSON.stringify({
+        sender: userName,
+        group: { id: groupId }
+      }));
+
       // Get old messages
       fetch("http://localhost:" + port + "/chat/groups/" + groupId + "/messages")
               .then(response => response.json())
               .then(messages => {
-                console.log("Fetched messages:", messages);
-                if (!Array.isArray(messages)) {
-                  messages = [messages];
-                }
-
                 messages.forEach(message => displayMessage(message));
               });
 
-
-
-      // Subscribe to real-time group chat
+      // Subscribe to live messages
       stompClient.subscribe('/topic/group/' + groupId, function (message) {
         let msg = JSON.parse(message.body);
         displayMessage(msg);
       });
+
+      // 🔥 Optional: Listen to disconnects on /topic/public
+      stompClient.subscribe('/topic/public', function (message) {
+        let msg = JSON.parse(message.body);
+        console.log("DISCONNECT EVENT:", msg);
+        displayMessage(msg);
+      });
     });
   }
+
 
   function sendMessage() {
     let messageContent = document.getElementById("message").value;

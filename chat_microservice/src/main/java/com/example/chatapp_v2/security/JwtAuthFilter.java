@@ -33,7 +33,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
             response.getWriter().write("Missing or invalid Authorization header");
-            logger.error("❌ Missing or invalid Authorization header");
+            logger.error("Missing or invalid Authorization header");
             return;
         }
 

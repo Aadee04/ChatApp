@@ -5,12 +5,14 @@ services:
     environment:
       MYSQL_ROOT_PASSWORD: ${DB_PASS}
       MYSQL_DATABASE: ${MYSQL_DB}
+      MYSQL_USER: ${DB_USER}
+      MYSQL_PASSWORD: ${DB_PASS}
     ports:
       - "3307:3306"
     volumes:
       - mysqldata:/var/lib/mysql
     networks:
-      - backend
+      - chat_network
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
       interval: 10s
@@ -18,18 +20,18 @@ services:
       retries: 5
       start_period: 30s
 
-  config-server:
+  config_server:
     build: ./config_server
-    container_name: config-server
+    container_name: config_server
     ports:
       - "8888:8888"
     networks:
-      - backend
+      - chat_network
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8888/actuator/health || exit 1"]
       interval: 10s
       timeout: 5s
-      retries: 5
+      retries: 10
       start_period: 10s
 
   eureka-server:
@@ -38,17 +40,16 @@ services:
     ports:
       - "8761:8761"
     depends_on:
-      config-server:
+      config_server:
         condition: service_healthy
     environment:
-      # make config import optional and point at the Docker service name
-      SPRING_CONFIG_IMPORT: optional:configserver:http://config-server:8888
+      - SPRING_CONFIG_IMPORT=optional:configserver:http://config_server:8888
     networks:
-      - backend
+      - chat_network
 
-  login-signup-microservice:
+  login_signup_microservice:
     build: ./login_signup_microservice
-    container_name: login-signup-microservice
+    container_name: login_signup_microservice
     ports:
       - "8081:8081"
     depends_on:
@@ -57,32 +58,12 @@ services:
       mysql:
         condition: service_healthy
     environment:
-      SPRING_DATASOURCE_URL:      jdbc:mysql://mysql:3306/${MYSQL_DB}
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/${MYSQL_DB}
       SPRING_DATASOURCE_USERNAME: ${DB_USER}
       SPRING_DATASOURCE_PASSWORD: ${DB_PASS}
-      SPRING_CONFIG_IMPORT:       optional:configserver:http://config-server:8888
+      SPRING_CONFIG_IMPORT: optional:configserver:http://config_server:8888
     networks:
-      - backend
-
-  chat-microservice:
-    build: ./chat_microservice
-    container_name: chat-microservice
-    ports:
-      - "8080:8080"
-    depends_on:
-      login-signup-microservice:
-        condition: service_started
-      notifs:
-        condition: service_started
-      mysql:
-        condition: service_healthy
-    environment:
-      SPRING_DATASOURCE_URL:      jdbc:mysql://mysql:3306/${MYSQL_DB}
-      SPRING_DATASOURCE_USERNAME: ${DB_USER}
-      SPRING_DATASOURCE_PASSWORD: ${DB_PASS}
-      SPRING_CONFIG_IMPORT:       optional:configserver:http://config-server:8888
-    networks:
-      - backend
+      - chat_network
 
   notifs:
     build: ./notifs
@@ -93,9 +74,29 @@ services:
       eureka-server:
         condition: service_started
     environment:
-      SPRING_CONFIG_IMPORT: optional:configserver:http://config-server:8888
+      SPRING_CONFIG_IMPORT: optional:configserver:http://config_server:8888
     networks:
-      - backend
+      - chat_network
+
+  chat_microservice:
+    build: ./chat_microservice
+    container_name: chat_microservice
+    ports:
+      - "8080:8080"
+    depends_on:
+      login_signup_microservice:
+        condition: service_started
+      notifs:
+        condition: service_started
+      mysql:
+        condition: service_healthy
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/${MYSQL_DB}
+      SPRING_DATASOURCE_USERNAME: ${DB_USER}
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASS}
+      SPRING_CONFIG_IMPORT: optional:configserver:http://config_server:8888
+    networks:
+      - chat_network
 
   api-gateway:
     build: ./api-gateway
@@ -103,19 +104,19 @@ services:
     ports:
       - "9090:9090"
     depends_on:
-      login-signup-microservice:
+      login_signup_microservice:
         condition: service_started
-      chat-microservice:
+      chat_microservice:
         condition: service_started
       notifs:
         condition: service_started
     environment:
-      SPRING_CONFIG_IMPORT: optional:configserver:http://config-server:8888
+      SPRING_CONFIG_IMPORT: optional:configserver:http://config_server:8888
     networks:
-      - backend
+      - chat_network
 
 volumes:
   mysqldata:
 
 networks:
-  backend:
+  chat_network:

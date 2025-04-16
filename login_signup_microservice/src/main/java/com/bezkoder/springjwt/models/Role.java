@@ -14,7 +14,6 @@ import lombok.Setter;
 @Entity
 @Getter
 @Setter
-@NoArgsConstructor
 @AllArgsConstructor
 @Table(name = "roles")
 public class Role {
@@ -34,12 +33,12 @@ public class Role {
   @Column(length = 20)
   private ERole name;
 
-//  /**
-//   * Default constructor required by JPA.
-//   */
-//  public Role() {
-//
-//  }
+  /**
+   * Default constructor required by JPA.
+   */
+  public Role() {
+
+  }
 //
 //  /**
 //   * Constructs a new Role with the specified role name.
