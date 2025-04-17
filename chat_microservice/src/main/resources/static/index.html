@@ -48,12 +48,13 @@
 <script type="module" src="firebase-messaging.js"></script>
 <script type="module" src="firebase-messaging-sw.js"></script>
 
-
 <script>
   let stompClient = null;
   let groupId = null;
   let userName = null;
   let port = 9090;
+  let hasJoined = false;
+
   function showCreateGroup() {
     document.getElementById("group-selection").classList.add("hidden");
     document.getElementById("create-group").classList.remove("hidden");
@@ -83,17 +84,13 @@
       return;
     }
 
-    // 💥 CALL JOIN GROUP ENDPOINT
     fetch(`http://localhost:${port}/chat/groups/join?groupId=${groupId}&userId=${userName}`, {
       method: "POST"
     })
             .then(response => response.text())
             .then(msg => {
               console.log(msg);
-              // Only connect to chat once join is confirmed
               connect();
-
-              // Register FCM Token
               requestNotificationPermission(userName);
             })
             .catch(error => {
@@ -102,7 +99,6 @@
             });
   }
 
-
   function connect() {
     let socket = new SockJS('http://localhost:' + port + '/ws');
     stompClient = Stomp.over(socket);
@@ -110,53 +106,63 @@
       document.getElementById("join-group").classList.add("hidden");
       document.getElementById("chat-page").classList.remove("hidden");
 
-      // Send "addUserToGroup" to store username in session
+      // Store user in session
       stompClient.send("/app/addUserToGroup", {}, JSON.stringify({
         sender: userName,
         group: { id: groupId }
       }));
 
-      // Get old messages
+      hasJoined = true;
+
       fetch("http://localhost:" + port + "/chat/groups/" + groupId + "/messages")
               .then(response => response.json())
               .then(messages => {
                 messages.forEach(message => displayMessage(message));
               });
 
-      // Subscribe to live messages
       stompClient.subscribe('/topic/group/' + groupId, function (message) {
         let msg = JSON.parse(message.body);
-        displayMessage(msg);
-      });
-
-      // 🔥 Optional: Listen to disconnects on /topic/public
-      stompClient.subscribe('/topic/public', function (message) {
-        let msg = JSON.parse(message.body);
-        console.log("DISCONNECT EVENT:", msg);
         displayMessage(msg);
       });
     });
   }
 
-
   function sendMessage() {
-    let messageContent = document.getElementById("message").value;
+    let messageInput = document.getElementById("message");
+    let messageContent = messageInput.value;
+
+    if (!messageContent.trim()) return;
+
     let chatMessage = {
       group: { id: groupId },
       sender: userName,
       content: messageContent,
       type: "CHAT"
     };
+
     stompClient.send("/app/sendMessageToGroup", {}, JSON.stringify(chatMessage));
+    messageInput.value = "";
   }
 
   function displayMessage(message) {
-    console.log("Displaying message:", message); // Debug log
+    // Skip your own first JOIN message only
+    if (message.type === "JOIN" && message.sender === userName && hasJoined) {
+      hasJoined = false;
+      return;
+    }
+
     let messageElement = document.createElement('li');
-    messageElement.textContent = message.sender + ": " + message.content;
+
+    if (message.type === "LEAVE") {
+      messageElement.textContent = `${message.sender} has left the chat.`;
+      messageElement.style.fontStyle = "italic";
+      messageElement.style.color = "gray";
+    } else {
+      messageElement.textContent = message.sender + ": " + message.content;
+    }
+
     document.getElementById("messageArea").appendChild(messageElement);
   }
-
 </script>
 
 </body>

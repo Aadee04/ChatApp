@@ -70,6 +70,7 @@ public class WebSecurityConfig {
                             .requestMatchers("/api/test/user").hasAnyRole("USER", "MODERATOR", "ADMIN") // Requires authentication
                             .requestMatchers("/api/test/mod").hasRole("MODERATOR") // Requires MODERATOR role
                             .requestMatchers("/api/test/admin").hasRole("ADMIN") // Requires ADMIN role
+                            .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
                         .anyRequest().authenticated() // Secures all other endpoints
             );
 
